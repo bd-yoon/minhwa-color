@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>민화 선화 변환기 — 컬러 PNG → 선화</title>
+  <title>민화 선화 변환기 v2</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -12,28 +12,65 @@
       padding: 28px 24px;
       min-height: 100vh;
     }
-    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
     .sub { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+
+    .mode-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      background: #0e0f1e;
+      border-radius: 14px;
+      padding: 4px;
+      width: fit-content;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .mode-btn {
+      padding: 10px 22px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: transparent;
+      color: #888;
+      transition: all 0.2s;
+    }
+    .mode-btn.active {
+      background: linear-gradient(135deg, #C0392B, #E74C3C);
+      color: #fff;
+    }
+    .mode-desc {
+      font-size: 0.78rem;
+      color: #666;
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 10px;
+      line-height: 1.6;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .mode-desc strong { color: #aaa; }
 
     .upload-area {
       border: 2px dashed #C0392B;
       border-radius: 16px;
-      padding: 40px;
+      padding: 32px;
       text-align: center;
       cursor: pointer;
-      margin-bottom: 28px;
-      transition: all 0.2s;
+      margin-bottom: 24px;
       background: rgba(192,57,43,0.06);
+      transition: all 0.2s;
     }
     .upload-area:hover { background: rgba(192,57,43,0.12); }
-    .upload-area p { color: #999; font-size: 0.9rem; margin-top: 8px; }
+    .upload-area p { color: #999; font-size: 0.85rem; margin-top: 6px; }
     #fileInput { display: none; }
 
     .controls {
       background: #14162A;
       border-radius: 16px;
       padding: 20px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       border: 1px solid rgba(255,255,255,0.07);
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -46,7 +83,7 @@
       margin-bottom: 6px;
       font-weight: 600;
     }
-    .control-group .value-display {
+    .control-group .val {
       font-size: 0.78rem;
       color: #C0392B;
       float: right;
@@ -61,7 +98,7 @@
     .btn-row {
       display: flex;
       gap: 12px;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
       flex-wrap: wrap;
     }
     .btn {
@@ -74,16 +111,15 @@
       transition: opacity 0.2s;
     }
     .btn:hover { opacity: 0.85; }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .btn-primary { background: linear-gradient(135deg, #C0392B, #E74C3C); color: #fff; }
-    .btn-secondary { background: #2C3E50; color: #fff; }
     .btn-download { background: linear-gradient(135deg, #27AE60, #2ECC71); color: #fff; }
 
     .preview-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
     .preview-panel {
       background: #14162A;
@@ -92,9 +128,9 @@
       border: 1px solid rgba(255,255,255,0.07);
     }
     .preview-panel h3 {
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       color: #aaa;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       font-weight: 700;
     }
     .canvas-wrapper {
@@ -104,73 +140,127 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 200px;
+      min-height: 180px;
     }
-    canvas {
-      max-width: 100%;
-      height: auto;
-      display: block;
+    .canvas-wrapper.checkerboard {
+      background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
     }
+    canvas { max-width: 100%; height: auto; display: block; }
 
     .status {
       font-size: 0.82rem;
       color: #888;
       text-align: center;
       padding: 8px;
+      margin-bottom: 8px;
     }
     .status.processing { color: #F39C12; }
     .status.done { color: #27AE60; }
 
     .tips {
-      background: rgba(192,57,43,0.08);
+      background: rgba(192,57,43,0.07);
       border-radius: 12px;
       padding: 16px;
       font-size: 0.8rem;
-      color: #999;
-      line-height: 1.7;
-      border: 1px solid rgba(192,57,43,0.2);
+      color: #888;
+      line-height: 1.75;
+      border: 1px solid rgba(192,57,43,0.18);
     }
     .tips strong { color: #C0392B; }
+    .tips ul { padding-left: 14px; }
+    .tips li { margin-bottom: 2px; }
   </style>
 </head>
 <body>
-  <h1>🎨 민화 선화 변환기</h1>
+  <h1>🎨 민화 선화 변환기 v2</h1>
   <p class="sub">컬러 민화 이미지를 흰 배경 + 검은 선화 PNG로 변환합니다</p>
 
-  <div class="upload-area" id="uploadArea">
-    <input type="file" id="fileInput" accept="image/*">
-    <div style="font-size:2.5rem">🖼️</div>
-    <strong style="font-size:1rem">이미지를 클릭하거나 드래그하여 업로드</strong>
-    <p>PNG, JPG, WEBP 지원 · 최대 4096px</p>
+  <!-- 모드 선택 -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="modeInk" onclick="setMode('ink')">🖌 잉크 추출 (추천)</button>
+    <button class="mode-btn" id="modeEdge" onclick="setMode('edge')">🔍 엣지 검출</button>
+  </div>
+  <div class="mode-desc" id="modeDesc">
+    <strong>잉크 추출 모드</strong>: 민화에 이미 그려진 먹선·윤곽선을 직접 뽑아냅니다.
+    각 픽셀이 주변보다 얼마나 어두운지를 기준으로 잉크 선만 남깁니다.
+    <strong>민화, 수묵화, 동양화 스캔 이미지에 최적입니다.</strong>
   </div>
 
-  <div class="controls">
+  <!-- 업로드 -->
+  <div class="upload-area" id="uploadArea">
+    <input type="file" id="fileInput" accept="image/*">
+    <div style="font-size:2.2rem">🖼️</div>
+    <strong style="font-size:1rem">클릭하거나 드래그하여 이미지 업로드</strong>
+    <p>PNG, JPG, WEBP 지원 · 컬러 민화 원본을 그대로 업로드하세요</p>
+  </div>
+
+  <!-- 컨트롤: 잉크 추출 모드 -->
+  <div class="controls" id="inkControls">
     <div class="control-group">
-      <label>Low Threshold (낮은 임계값) <span class="value-display" id="lowVal">30</span></label>
-      <input type="range" id="tLow" min="5" max="100" value="30">
+      <label>최대 채도 (낮을수록 순수 먹선만) <span class="val" id="sensVal">40</span></label>
+      <input type="range" id="sensitivity" min="5" max="120" value="40">
     </div>
     <div class="control-group">
-      <label>High Threshold (높은 임계값) <span class="value-display" id="highVal">80</span></label>
-      <input type="range" id="tHigh" min="20" max="200" value="80">
+      <label>최대 밝기 (높일수록 회색 선도 포함) <span class="val" id="absVal">100</span></label>
+      <input type="range" id="absThresh" min="30" max="220" value="100">
     </div>
     <div class="control-group">
-      <label>선 두께 <span class="value-display" id="thickVal">1px</span></label>
-      <input type="range" id="thickness" min="1" max="4" value="1" step="1">
+      <label>로컬 비교 민감도 <span class="val" id="radVal">20</span></label>
+      <input type="range" id="localRadius" min="5" max="60" value="20" step="1">
     </div>
     <div class="control-group">
-      <label>블러 강도 (노이즈 제거) <span class="value-display" id="blurVal">1.5</span></label>
-      <input type="range" id="blurRadius" min="0" max="5" value="1.5" step="0.5">
+      <label>스무딩 (JPEG 노이즈 제거) <span class="val" id="smVal">1.0</span></label>
+      <input type="range" id="smoothing" min="0" max="3" value="1" step="0.5">
+    </div>
+    <div class="control-group">
+      <label>선 두께 <span class="val" id="thickInkVal">2px</span></label>
+      <input type="range" id="thicknessInk" min="1" max="5" value="2" step="1">
+    </div>
+    <div class="control-group">
+      <label>노이즈 제거 강도 <span class="val" id="cleanVal">2</span></label>
+      <input type="range" id="cleanRadius" min="0" max="5" value="2" step="1">
     </div>
     <div class="control-group full">
-      <label>출력 최대 너비 <span class="value-display" id="maxWVal">750px</span></label>
-      <input type="range" id="maxWidth" min="375" max="1500" value="750" step="75">
+      <label>출력 최대 너비 <span class="val" id="maxWInkVal">750px</span></label>
+      <input type="range" id="maxWidthInk" min="375" max="1500" value="750" step="75">
+    </div>
+  </div>
+
+  <!-- 컨트롤: 엣지 검출 모드 (Sobel 개선) -->
+  <div class="controls" id="edgeControls" style="display:none">
+    <div class="control-group">
+      <label>σ1 (세밀 블러) <span class="val" id="s1Val">0.8</span></label>
+      <input type="range" id="sigma1" min="0.3" max="3" value="0.8" step="0.1">
+    </div>
+    <div class="control-group">
+      <label>σ2 (넓은 블러) <span class="val" id="s2Val">2.0</span></label>
+      <input type="range" id="sigma2" min="1" max="8" value="2.0" step="0.1">
+    </div>
+    <div class="control-group">
+      <label>대비 비율 p <span class="val" id="pVal">0.98</span></label>
+      <input type="range" id="pRatio" min="0.90" max="1.00" value="0.98" step="0.01">
+    </div>
+    <div class="control-group">
+      <label>선 임계값 ε <span class="val" id="epsVal">0.01</span></label>
+      <input type="range" id="epsilon" min="0" max="0.1" value="0.01" step="0.005">
+    </div>
+    <div class="control-group">
+      <label>선 두께 <span class="val" id="thickEdgeVal">1px</span></label>
+      <input type="range" id="thicknessEdge" min="1" max="5" value="1" step="1">
+    </div>
+    <div class="control-group">
+      <label>노이즈 제거 강도 <span class="val" id="cleanEdgeVal">2</span></label>
+      <input type="range" id="cleanEdge" min="0" max="5" value="2" step="1">
+    </div>
+    <div class="control-group full">
+      <label>출력 최대 너비 <span class="val" id="maxWEdgeVal">750px</span></label>
+      <input type="range" id="maxWidthEdge" min="375" max="1500" value="750" step="75">
     </div>
   </div>
 
   <div class="btn-row">
     <button class="btn btn-primary" id="convertBtn" disabled>🔄 변환하기</button>
     <button class="btn btn-download" id="downloadBtn" disabled>⬇️ PNG 다운로드</button>
-    <button class="btn btn-secondary" id="autoBtn" disabled>✨ 자동 최적화</button>
   </div>
 
   <div class="status" id="status">이미지를 업로드해주세요</div>
@@ -183,51 +273,90 @@
       </div>
     </div>
     <div class="preview-panel">
-      <h3>변환 결과 (선화)</h3>
-      <div class="canvas-wrapper" style="background: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;">
+      <h3>변환 결과</h3>
+      <div class="canvas-wrapper checkerboard">
         <canvas id="outputCanvas"></canvas>
       </div>
     </div>
   </div>
 
-  <div class="tips">
-    <strong>사용 팁:</strong><br>
-    • Low/High Threshold를 조절해 선의 섬세함을 제어하세요 (Low ↓ = 더 많은 선, High ↑ = 굵은 선만)<br>
-    • 선이 너무 끊기면 Low를 낮추고, 노이즈가 많으면 블러를 높이세요<br>
-    • 민화는 보통 Low:20~35, High:60~90 범위가 잘 맞습니다<br>
-    • 선 두께 2~3이 모바일 화면에서 색칠하기 편합니다<br>
-    • 출력 너비 750px = 2배 레티나 기준 375px 화면
+  <div class="tips" id="tipsInk">
+    <strong>잉크 추출 모드 원리:</strong> 민화 먹선은 "어둡고 채도 없음(검정/무채색)"이라는 두 가지 특성을 가집니다.
+    파란 하늘이나 초록 산은 어두워도 채도가 높으므로 제외됩니다.<br><br>
+    <strong>파라미터 가이드:</strong>
+    <ul>
+      <li><strong>최대 채도</strong>: 낮을수록 순수 검정 먹선만 추출. 높이면 약간 색이 있는 선도 포함 (기본 40)</li>
+      <li><strong>최대 밝기</strong>: 높일수록 회색빛 먹선도 잡힘. 너무 높이면 밝은 색상도 검게 될 수 있음 (기본 100)</li>
+      <li><strong>로컬 비교 민감도</strong>: 주변보다 이 값(밝기)만큼 어두운 저채도 픽셀도 선으로 추가 인식</li>
+      <li><strong>스무딩</strong>: JPEG 압축 노이즈 제거. 원본이 깨끗하면 0~1로 낮게 유지</li>
+      <li>선이 부족하면: 최대 채도 ↑ 또는 최대 밝기 ↑ / 배경이 검게 되면: 최대 채도 ↓</li>
+    </ul>
+  </div>
+  <div class="tips" id="tipsEdge" style="display:none">
+    <strong>엣지 검출 모드 (XDoG) 사용 팁:</strong>
+    <ul>
+      <li>사진이나 아웃라인이 없는 그림에 사용. 두 가우시안 블러의 차이로 엣지를 검출</li>
+      <li><strong>σ1 / σ2</strong>: 두 값의 비율이 클수록 넓은 선. σ1=0.5~1.0, σ2=σ1×2~4 권장</li>
+      <li><strong>대비 비율 p</strong>: 0.98~0.99가 가장 깔끔한 선 추출</li>
+      <li><strong>선 임계값</strong>: 높을수록 굵은 선만 남음</li>
+    </ul>
   </div>
 
   <script>
     let originalImage = null;
     let outputDataUrl = null;
-    let convertDebounce = null;
+    let currentMode = 'ink';
+    let debounceTimer = null;
 
-    // DOM refs
     const fileInput = document.getElementById('fileInput');
     const uploadArea = document.getElementById('uploadArea');
     const originalCanvas = document.getElementById('originalCanvas');
     const outputCanvas = document.getElementById('outputCanvas');
     const convertBtn = document.getElementById('convertBtn');
     const downloadBtn = document.getElementById('downloadBtn');
-    const autoBtn = document.getElementById('autoBtn');
     const status = document.getElementById('status');
 
-    const tLow = document.getElementById('tLow');
-    const tHigh = document.getElementById('tHigh');
-    const thickness = document.getElementById('thickness');
-    const blurRadius = document.getElementById('blurRadius');
-    const maxWidthSlider = document.getElementById('maxWidth');
+    // ── 모드 전환 ──────────────────────────────────────────────────
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('modeInk').classList.toggle('active', mode === 'ink');
+      document.getElementById('modeEdge').classList.toggle('active', mode === 'edge');
+      document.getElementById('inkControls').style.display = mode === 'ink' ? 'grid' : 'none';
+      document.getElementById('edgeControls').style.display = mode === 'edge' ? 'grid' : 'none';
+      document.getElementById('tipsInk').style.display = mode === 'ink' ? 'block' : 'none';
+      document.getElementById('tipsEdge').style.display = mode === 'edge' ? 'block' : 'none';
+      document.getElementById('modeDesc').innerHTML = mode === 'ink'
+        ? '<strong>잉크 추출 모드</strong>: 민화에 이미 그려진 먹선·윤곽선을 직접 뽑아냅니다. 각 픽셀이 주변보다 얼마나 어두운지를 기준으로 잉크 선만 남깁니다. <strong>민화, 수묵화, 동양화 스캔 이미지에 최적입니다.</strong>'
+        : '<strong>엣지 검출 모드 (XDoG)</strong>: 두 가우시안 블러의 차이로 경계선을 검출합니다. 아웃라인이 없는 수채화/유화나 사진에 사용하세요. 민화 선화 추출에는 잉크 추출 모드가 더 낫습니다.';
+      debounceConvert();
+    }
 
-    // Slider display updates
-    tLow.addEventListener('input', () => { document.getElementById('lowVal').textContent = tLow.value; debounceConvert(); });
-    tHigh.addEventListener('input', () => { document.getElementById('highVal').textContent = tHigh.value; debounceConvert(); });
-    thickness.addEventListener('input', () => { document.getElementById('thickVal').textContent = thickness.value + 'px'; debounceConvert(); });
-    blurRadius.addEventListener('input', () => { document.getElementById('blurVal').textContent = blurRadius.value; debounceConvert(); });
-    maxWidthSlider.addEventListener('input', () => { document.getElementById('maxWVal').textContent = maxWidthSlider.value + 'px'; debounceConvert(); });
+    // ── 슬라이더 업데이트 ─────────────────────────────────────────
+    function wire(id, displayId, suffix, fn) {
+      const el = document.getElementById(id);
+      el.addEventListener('input', () => {
+        document.getElementById(displayId).textContent = el.value + (suffix || '');
+        if (fn) fn();
+        debounceConvert();
+      });
+    }
+    wire('sensitivity', 'sensVal', '');
+    wire('absThresh', 'absVal', '');
+    wire('localRadius', 'radVal', 'px');
+    wire('smoothing', 'smVal', '');
+    wire('thicknessInk', 'thickInkVal', 'px');
+    wire('cleanRadius', 'cleanVal', '');
+    wire('maxWidthInk', 'maxWInkVal', 'px');
 
-    // Upload handling
+    wire('sigma1', 's1Val', '');
+    wire('sigma2', 's2Val', '');
+    wire('pRatio', 'pVal', '');
+    wire('epsilon', 'epsVal', '');
+    wire('thicknessEdge', 'thickEdgeVal', 'px');
+    wire('cleanEdge', 'cleanEdgeVal', '');
+    wire('maxWidthEdge', 'maxWEdgeVal', 'px');
+
+    // ── 업로드 ───────────────────────────────────────────────────
     uploadArea.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', (e) => { if (e.target.files[0]) loadImage(e.target.files[0]); });
     uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#E74C3C'; });
@@ -240,7 +369,6 @@
     });
 
     convertBtn.addEventListener('click', runConvert);
-    autoBtn.addEventListener('click', runAutoOptimize);
     downloadBtn.addEventListener('click', () => {
       if (!outputDataUrl) return;
       const a = document.createElement('a');
@@ -251,8 +379,8 @@
 
     function debounceConvert() {
       if (!originalImage) return;
-      clearTimeout(convertDebounce);
-      convertDebounce = setTimeout(runConvert, 250);
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(runConvert, 280);
     }
 
     function loadImage(file) {
@@ -263,8 +391,7 @@
           originalImage = img;
           drawOriginal(img);
           convertBtn.disabled = false;
-          autoBtn.disabled = false;
-          setStatus('이미지 로드 완료. 변환하기를 눌러주세요.', '');
+          setStatus('이미지 로드 완료', '');
           runConvert();
         };
         img.src = e.target.result;
@@ -273,15 +400,12 @@
     }
 
     function drawOriginal(img) {
-      const maxW = parseInt(maxWidthSlider.value);
-      let w = img.width;
-      let h = img.height;
+      const maxW = 750;
+      let w = img.width, h = img.height;
       if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-
       originalCanvas.width = w;
       originalCanvas.height = h;
-      const ctx = originalCanvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
+      originalCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
     }
 
     function setStatus(msg, type) {
@@ -292,217 +416,264 @@
     function runConvert() {
       if (!originalImage) return;
       setStatus('변환 중...', 'processing');
-
-      // Use requestAnimationFrame to let UI update before heavy computation
       requestAnimationFrame(() => {
         try {
-          const low = parseInt(tLow.value);
-          const high = parseInt(tHigh.value);
-          const thick = parseInt(thickness.value);
-          const blur = parseFloat(blurRadius.value);
-          const maxW = parseInt(maxWidthSlider.value);
-
-          const result = convertToLineArt(originalImage, { low, high, thick, blur, maxW });
+          let result;
+          if (currentMode === 'ink') {
+            result = convertInkMode(originalImage);
+          } else {
+            result = convertXDoGMode(originalImage);
+          }
           outputDataUrl = result;
-
           const img = new Image();
           img.onload = () => {
             outputCanvas.width = img.width;
             outputCanvas.height = img.height;
-            const ctx = outputCanvas.getContext('2d');
-            ctx.clearRect(0, 0, img.width, img.height);
-            ctx.drawImage(img, 0, 0);
+            outputCanvas.getContext('2d').drawImage(img, 0, 0);
             downloadBtn.disabled = false;
-            setStatus(`변환 완료 — ${img.width}×${img.height}px`, 'done');
+            setStatus(`완료 — ${img.width}×${img.height}px`, 'done');
           };
           img.src = result;
-        } catch(e) {
-          setStatus('변환 오류: ' + e.message, '');
+        } catch (e) {
+          setStatus('오류: ' + e.message, '');
           console.error(e);
         }
       });
     }
 
-    function convertToLineArt(img, { low, high, thick, blur, maxW }) {
-      // 1. Setup canvas at target resolution
-      let w = img.width;
-      let h = img.height;
+    // ════════════════════════════════════════════════════════════
+    // 모드 1: 잉크 추출 (채도 + 밝기 기반)
+    //
+    // 핵심 아이디어:
+    //   민화 먹선의 두 가지 특성:
+    //   1) 어둡다 (밝기가 낮음)
+    //   2) 채도가 없다 (검정/무채색 → 채도 ≈ 0)
+    //
+    //   파란 하늘: 어둡지만 채도 높음 → 잉크 아님 ✓
+    //   초록 산:   어둡지만 채도 높음 → 잉크 아님 ✓
+    //   먹선:      어둡고 채도 거의 0 → 잉크 ✓
+    //
+    //   + 보조 조건: 로컬 적응형 임계값으로 색상 경계 근처 얇은 선 보완
+    // ════════════════════════════════════════════════════════════
+    function convertInkMode(img) {
+      const maxW = parseInt(document.getElementById('maxWidthInk').value);
+      const maxChroma = parseInt(document.getElementById('sensitivity').value);    // 최대 채도 (낮을수록 순수 먹선만)
+      const maxLightness = parseInt(document.getElementById('absThresh').value);   // 최대 밝기 (높일수록 회색 먹선도 잡음)
+      const localSens = parseInt(document.getElementById('localRadius').value);    // 로컬 적응형 민감도
+      const smoothSigma = parseFloat(document.getElementById('smoothing').value);
+      const thick = parseInt(document.getElementById('thicknessInk').value);
+      const cleanR = parseInt(document.getElementById('cleanRadius').value);
+
+      let w = img.width, h = img.height;
       if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
 
       const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
+      canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
+      const src = ctx.getImageData(0, 0, w, h).data;
 
-      const imageData = ctx.getImageData(0, 0, w, h);
-      const src = imageData.data;
+      // 1. 각 픽셀의 채도(Chroma)와 밝기(Lightness) 계산
+      //    Chroma = maxRGB - minRGB (0=무채색, 255=완전 채색)
+      //    Lightness = (maxRGB + minRGB) / 2
+      const chroma = new Float32Array(w * h);
+      const lightness = new Float32Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        const r = src[i*4], g = src[i*4+1], b = src[i*4+2];
+        const maxC = Math.max(r, g, b);
+        const minC = Math.min(r, g, b);
+        chroma[i] = maxC - minC;         // 0~255: 낮을수록 무채색(먹선)
+        lightness[i] = (maxC + minC) / 2; // 0~255: 낮을수록 어둠
+      }
 
-      // 2. Grayscale
+      // 2. 스무딩으로 JPEG 노이즈 완화
+      const smLight = smoothSigma > 0 ? gaussianBlur(lightness, w, h, smoothSigma) : lightness;
+      const smChroma = smoothSigma > 0 ? gaussianBlur(chroma, w, h, smoothSigma) : chroma;
+
+      // 3. 로컬 적응형: 그레이스케일 기준, 주변보다 어두운 픽셀 검출
+      //    (먹선 경계에서 채도가 약간 있어도 잡을 수 있도록 보조 조건으로 사용)
       const gray = new Float32Array(w * h);
+      for (let i = 0; i < w * h; i++) gray[i] = smLight[i];
+      const localMean = boxBlurApprox(gray, w, h, 12);
+
+      // 4. 잉크 픽셀 분류
+      //    조건 A (주 조건): 채도 낮고 + 어두운 픽셀 = 먹선
+      //    조건 B (보조 조건): 채도 낮고 + 주변보다 훨씬 어두운 픽셀 = 경계 먹선
+      const edges = new Uint8Array(w * h);
       for (let i = 0; i < w * h; i++) {
-        const r = src[i * 4];
-        const g = src[i * 4 + 1];
-        const b = src[i * 4 + 2];
-        gray[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+        const isDesaturated = smChroma[i] < maxChroma;           // 채도 기준 (핵심!)
+        const isDark = smLight[i] < maxLightness;                 // 절대 어두움
+        const isDarkerThanLocal = (localMean[i] - smLight[i]) > localSens; // 로컬 비교
+        // 무채색이어야 하고, (어둡거나 OR 주변보다 어두워야) 함
+        edges[i] = (isDesaturated && (isDark || isDarkerThanLocal)) ? 1 : 0;
       }
 
-      // 3. Gaussian blur (separable 1D)
-      let blurred = gray;
-      if (blur > 0) {
-        blurred = gaussianBlur(gray, w, h, blur);
-      }
+      // 5. 노이즈 제거
+      let cleaned = edges;
+      if (cleanR > 0) cleaned = removeIsolatedPixels(edges, w, h, cleanR);
 
-      // 4. Sobel edge detection
-      const edges = sobelEdge(blurred, w, h);
+      // 6. 선 두께 조정
+      let thickened = cleaned;
+      for (let t = 1; t < thick; t++) thickened = dilate(thickened, w, h);
 
-      // 5. Hysteresis thresholding
-      const edgeMap = hysteresis(edges, w, h, low, high);
-
-      // 6. Line dilation (thicken)
-      let thickMap = edgeMap;
-      for (let t = 1; t < thick; t++) {
-        thickMap = dilate(thickMap, w, h);
-      }
-
-      // 7. Build output: black lines on white background
-      const outData = new Uint8ClampedArray(w * h * 4);
-      for (let i = 0; i < w * h; i++) {
-        if (thickMap[i]) {
-          // Black line
-          outData[i * 4] = 0;
-          outData[i * 4 + 1] = 0;
-          outData[i * 4 + 2] = 0;
-          outData[i * 4 + 3] = 255;
-        } else {
-          // White background
-          outData[i * 4] = 255;
-          outData[i * 4 + 1] = 255;
-          outData[i * 4 + 2] = 255;
-          outData[i * 4 + 3] = 255;
-        }
-      }
-
-      const outCanvas = document.createElement('canvas');
-      outCanvas.width = w;
-      outCanvas.height = h;
-      const outCtx = outCanvas.getContext('2d');
-      outCtx.putImageData(new ImageData(outData, w, h), 0, 0);
-      return outCanvas.toDataURL('image/png');
+      return buildOutput(thickened, w, h);
     }
 
-    // Separable Gaussian blur
-    function gaussianBlur(data, w, h, sigma) {
-      const radius = Math.ceil(sigma * 2);
-      const kernel = makeGaussianKernel(sigma, radius);
-      const temp = new Float32Array(w * h);
-      const out = new Float32Array(w * h);
-
-      // Horizontal pass
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          let sum = 0, wSum = 0;
-          for (let k = -radius; k <= radius; k++) {
-            const xi = Math.min(Math.max(x + k, 0), w - 1);
-            const kw = kernel[k + radius];
-            sum += data[y * w + xi] * kw;
-            wSum += kw;
-          }
-          temp[y * w + x] = sum / wSum;
-        }
-      }
-
-      // Vertical pass
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          let sum = 0, wSum = 0;
-          for (let k = -radius; k <= radius; k++) {
-            const yi = Math.min(Math.max(y + k, 0), h - 1);
-            const kw = kernel[k + radius];
-            sum += temp[yi * w + x] * kw;
-            wSum += kw;
-          }
-          out[y * w + x] = sum / wSum;
-        }
-      }
-      return out;
-    }
-
-    function makeGaussianKernel(sigma, radius) {
-      const k = [];
-      for (let i = -radius; i <= radius; i++) {
-        k.push(Math.exp(-(i * i) / (2 * sigma * sigma)));
-      }
-      return k;
-    }
-
-    // Sobel edge detection — returns magnitude array
-    function sobelEdge(gray, w, h) {
-      const out = new Float32Array(w * h);
-      for (let y = 1; y < h - 1; y++) {
-        for (let x = 1; x < w - 1; x++) {
-          const tl = gray[(y-1)*w+(x-1)], tc = gray[(y-1)*w+x], tr = gray[(y-1)*w+(x+1)];
-          const ml = gray[y*w+(x-1)],               mr = gray[y*w+(x+1)];
-          const bl = gray[(y+1)*w+(x-1)], bc = gray[(y+1)*w+x], br = gray[(y+1)*w+(x+1)];
-
-          const gx = -tl - 2*ml - bl + tr + 2*mr + br;
-          const gy = -tl - 2*tc - tr + bl + 2*bc + br;
-          out[y * w + x] = Math.sqrt(gx*gx + gy*gy);
-        }
-      }
-      return out;
-    }
-
-    // Hysteresis thresholding
-    function hysteresis(edges, w, h, low, high) {
-      const STRONG = 2, WEAK = 1, NONE = 0;
-      const map = new Uint8Array(w * h);
-
-      for (let i = 0; i < w * h; i++) {
-        if (edges[i] >= high) map[i] = STRONG;
-        else if (edges[i] >= low) map[i] = WEAK;
-      }
-
-      // BFS from strong pixels, activate connected weak pixels
-      const queue = [];
-      for (let i = 0; i < w * h; i++) {
-        if (map[i] === STRONG) queue.push(i);
-      }
-
-      const dirs = [-w-1,-w,-w+1,-1,1,w-1,w,w+1];
-      let qi = 0;
-      while (qi < queue.length) {
-        const idx = queue[qi++];
-        const x = idx % w;
-        const y = Math.floor(idx / w);
-        for (const d of dirs) {
-          const ni = idx + d;
-          const nx = ni % w;
-          const ny = Math.floor(ni / w);
-          if (ni < 0 || ni >= w*h) continue;
-          if (Math.abs(nx - x) > 1 || Math.abs(ny - y) > 1) continue;
-          if (map[ni] === WEAK) {
-            map[ni] = STRONG;
-            queue.push(ni);
-          }
-        }
-      }
-
-      const result = new Uint8Array(w * h);
-      for (let i = 0; i < w * h; i++) {
-        result[i] = map[i] === STRONG ? 1 : 0;
+    // 박스 블러 3회 반복 (가우시안 근사, 속도 최적화)
+    function boxBlurApprox(data, w, h, radius) {
+      let result = data;
+      for (let pass = 0; pass < 3; pass++) {
+        result = boxBlur1D(result, w, h, radius);
       }
       return result;
     }
 
-    // Morphological dilation (1px expand)
+    function boxBlur1D(data, w, h, radius) {
+      const temp = new Float32Array(w * h);
+      const out = new Float32Array(w * h);
+      // 가로
+      for (let y = 0; y < h; y++) {
+        let sum = 0, count = 0;
+        for (let x = 0; x < w; x++) {
+          sum += data[y * w + x];
+          count++;
+          if (x > radius) { sum -= data[y * w + (x - radius - 1)]; count--; }
+          const start = Math.max(0, x - radius);
+          temp[y * w + x] = sum / (x - start + 1);
+        }
+      }
+      // 세로
+      for (let x = 0; x < w; x++) {
+        let sum = 0;
+        for (let y = 0; y < h; y++) {
+          sum += temp[y * w + x];
+          if (y > radius) sum -= temp[(y - radius - 1) * w + x];
+          const start = Math.max(0, y - radius);
+          out[y * w + x] = sum / (y - start + 1);
+        }
+      }
+      return out;
+    }
+
+    // 고립 픽셀 제거: 주변 radius×2+1 안에 이웃 선 픽셀이 없으면 제거
+    function removeIsolatedPixels(map, w, h, radius) {
+      const out = new Uint8Array(map);
+      const minNeighbors = Math.max(1, radius);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          if (!map[y * w + x]) continue;
+          // 8방향 이웃 카운트 (작은 반경으로 빠르게 체크)
+          let n = 0;
+          const r = Math.min(radius, 3);
+          for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const ny = y + dy, nx = x + dx;
+              if (ny >= 0 && ny < h && nx >= 0 && nx < w && map[ny * w + nx]) n++;
+            }
+          }
+          if (n < minNeighbors) out[y * w + x] = 0;
+        }
+      }
+      return out;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 모드 2: XDoG (Extended Difference of Gaussians)
+    // 두 가우시안 블러의 차이 → 아웃라인 없는 그림에 사용
+    // ════════════════════════════════════════════════════════════
+    function convertXDoGMode(img) {
+      const maxW = parseInt(document.getElementById('maxWidthEdge').value);
+      const sigma1 = parseFloat(document.getElementById('sigma1').value);
+      const sigma2 = parseFloat(document.getElementById('sigma2').value);
+      const p = parseFloat(document.getElementById('pRatio').value);
+      const eps = parseFloat(document.getElementById('epsilon').value);
+      const thick = parseInt(document.getElementById('thicknessEdge').value);
+      const cleanR = parseInt(document.getElementById('cleanEdge').value);
+
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const src = ctx.getImageData(0, 0, w, h).data;
+
+      const gray = new Float32Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        // 0~1 정규화
+        gray[i] = (0.299 * src[i*4] + 0.587 * src[i*4+1] + 0.114 * src[i*4+2]) / 255;
+      }
+
+      const g1 = gaussianBlur(gray, w, h, sigma1);
+      const g2 = gaussianBlur(gray, w, h, sigma2);
+
+      // XDoG = G(σ1) - p * G(σ2), 0 이상이면 선
+      const edges = new Uint8Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        const d = g1[i] - p * g2[i];
+        // d < -eps → 선 (배경보다 어두운 엣지)
+        edges[i] = d < -eps ? 1 : 0;
+      }
+
+      let cleaned = edges;
+      if (cleanR > 0) cleaned = removeIsolatedPixels(edges, w, h, cleanR);
+
+      let thickened = cleaned;
+      for (let t = 1; t < thick; t++) thickened = dilate(thickened, w, h);
+
+      return buildOutput(thickened, w, h);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 공통 유틸리티
+    // ════════════════════════════════════════════════════════════
+
+    function gaussianBlur(data, w, h, sigma) {
+      const radius = Math.max(1, Math.ceil(sigma * 2.5));
+      const kernel = [];
+      let ksum = 0;
+      for (let i = -radius; i <= radius; i++) {
+        const v = Math.exp(-(i * i) / (2 * sigma * sigma));
+        kernel.push(v);
+        ksum += v;
+      }
+      for (let i = 0; i < kernel.length; i++) kernel[i] /= ksum;
+
+      const temp = new Float32Array(w * h);
+      const out = new Float32Array(w * h);
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          let sum = 0;
+          for (let k = -radius; k <= radius; k++) {
+            const xi = Math.min(Math.max(x + k, 0), w - 1);
+            sum += data[y * w + xi] * kernel[k + radius];
+          }
+          temp[y * w + x] = sum;
+        }
+      }
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          let sum = 0;
+          for (let k = -radius; k <= radius; k++) {
+            const yi = Math.min(Math.max(y + k, 0), h - 1);
+            sum += temp[yi * w + x] * kernel[k + radius];
+          }
+          out[y * w + x] = sum;
+        }
+      }
+      return out;
+    }
+
     function dilate(map, w, h) {
       const out = new Uint8Array(map);
       for (let y = 1; y < h - 1; y++) {
         for (let x = 1; x < w - 1; x++) {
           if (map[y*w+x]) {
             out[(y-1)*w+(x-1)] = out[(y-1)*w+x] = out[(y-1)*w+(x+1)] = 1;
-            out[y*w+(x-1)] =                        out[y*w+(x+1)] = 1;
+            out[y*w+(x-1)] = out[y*w+(x+1)] = 1;
             out[(y+1)*w+(x-1)] = out[(y+1)*w+x] = out[(y+1)*w+(x+1)] = 1;
           }
         }
@@ -510,61 +681,20 @@
       return out;
     }
 
-    // Auto-optimize: tries a range of thresholds and picks the one with best coverage
-    function runAutoOptimize() {
-      if (!originalImage) return;
-      setStatus('자동 최적화 중... (잠시 기다려주세요)', 'processing');
-
-      setTimeout(() => {
-        const maxW = parseInt(maxWidthSlider.value);
-        const blur = parseFloat(blurRadius.value);
-        const thick = parseInt(thickness.value);
-
-        // Sample multiple threshold combinations, pick one with ~5-15% edge coverage
-        const candidates = [
-          { low: 20, high: 60 }, { low: 25, high: 70 }, { low: 30, high: 80 },
-          { low: 35, high: 90 }, { low: 40, high: 100 }, { low: 20, high: 80 },
-          { low: 25, high: 90 }, { low: 30, high: 100 },
-        ];
-
-        let best = null;
-        let bestScore = Infinity;
-
-        // Quick analysis on smaller canvas
-        const analyzeW = Math.min(375, maxW);
-        let analyzeH = Math.round(originalImage.height * analyzeW / originalImage.width);
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = analyzeW; tempCanvas.height = analyzeH;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(originalImage, 0, 0, analyzeW, analyzeH);
-        const imgData = tempCtx.getImageData(0, 0, analyzeW, analyzeH);
-        const src = imgData.data;
-
-        const grayArr = new Float32Array(analyzeW * analyzeH);
-        for (let i = 0; i < analyzeW * analyzeH; i++) {
-          grayArr[i] = 0.299*src[i*4] + 0.587*src[i*4+1] + 0.114*src[i*4+2];
+    function buildOutput(map, w, h) {
+      const outData = new Uint8ClampedArray(w * h * 4);
+      for (let i = 0; i < w * h; i++) {
+        if (map[i]) {
+          outData[i*4] = 0; outData[i*4+1] = 0; outData[i*4+2] = 0;
+        } else {
+          outData[i*4] = 255; outData[i*4+1] = 255; outData[i*4+2] = 255;
         }
-        const blurred = blur > 0 ? gaussianBlur(grayArr, analyzeW, analyzeH, blur) : grayArr;
-        const edges = sobelEdge(blurred, analyzeW, analyzeH);
-        const total = analyzeW * analyzeH;
-
-        for (const c of candidates) {
-          const edgeMap = hysteresis(edges, analyzeW, analyzeH, c.low, c.high);
-          const count = edgeMap.reduce((s, v) => s + v, 0);
-          const coverage = count / total;
-          // Target: 5-12% edge coverage for민화
-          const score = Math.abs(coverage - 0.08);
-          if (score < bestScore) { bestScore = score; best = c; }
-        }
-
-        if (best) {
-          tLow.value = best.low;
-          tHigh.value = best.high;
-          document.getElementById('lowVal').textContent = best.low;
-          document.getElementById('highVal').textContent = best.high;
-          runConvert();
-        }
-      }, 50);
+        outData[i*4+3] = 255;
+      }
+      const oc = document.createElement('canvas');
+      oc.width = w; oc.height = h;
+      oc.getContext('2d').putImageData(new ImageData(outData, w, h), 0, 0);
+      return oc.toDataURL('image/png');
     }
   </script>
 </body>
