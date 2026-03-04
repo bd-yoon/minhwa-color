@@ -1,0 +1,24 @@
+{
+  "name": "minhwa-color",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "granite:build": "granite build"
+  },
+  "dependencies": {
+    "@apps-in-toss/web-framework": "^1.14.1",
+    "@toss/tds-mobile": "^2.2.1",
+    "framer-motion": "^12.34.3",
+    "next": "14.2.5",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0"
+  }
+}

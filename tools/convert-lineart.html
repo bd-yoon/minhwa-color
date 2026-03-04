@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>민화 선화 변환기 — 컬러 PNG → 선화</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      padding: 28px 24px;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+
+    .upload-area {
+      border: 2px dashed #C0392B;
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 28px;
+      transition: all 0.2s;
+      background: rgba(192,57,43,0.06);
+    }
+    .upload-area:hover { background: rgba(192,57,43,0.12); }
+    .upload-area p { color: #999; font-size: 0.9rem; margin-top: 8px; }
+    #fileInput { display: none; }
+
+    .controls {
+      background: #14162A;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .control-group label {
+      display: block;
+      font-size: 0.82rem;
+      color: #aaa;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .control-group .value-display {
+      font-size: 0.78rem;
+      color: #C0392B;
+      float: right;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #C0392B;
+      margin-top: 4px;
+    }
+    .control-group.full { grid-column: 1 / -1; }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #C0392B, #E74C3C); color: #fff; }
+    .btn-secondary { background: #2C3E50; color: #fff; }
+    .btn-download { background: linear-gradient(135deg, #27AE60, #2ECC71); color: #fff; }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .preview-panel {
+      background: #14162A;
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .preview-panel h3 {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+    .canvas-wrapper {
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+    }
+    canvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .status {
+      font-size: 0.82rem;
+      color: #888;
+      text-align: center;
+      padding: 8px;
+    }
+    .status.processing { color: #F39C12; }
+    .status.done { color: #27AE60; }
+
+    .tips {
+      background: rgba(192,57,43,0.08);
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 0.8rem;
+      color: #999;
+      line-height: 1.7;
+      border: 1px solid rgba(192,57,43,0.2);
+    }
+    .tips strong { color: #C0392B; }
+  </style>
+</head>
+<body>
+  <h1>🎨 민화 선화 변환기</h1>
+  <p class="sub">컬러 민화 이미지를 흰 배경 + 검은 선화 PNG로 변환합니다</p>
+
+  <div class="upload-area" id="uploadArea">
+    <input type="file" id="fileInput" accept="image/*">
+    <div style="font-size:2.5rem">🖼️</div>
+    <strong style="font-size:1rem">이미지를 클릭하거나 드래그하여 업로드</strong>
+    <p>PNG, JPG, WEBP 지원 · 최대 4096px</p>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Low Threshold (낮은 임계값) <span class="value-display" id="lowVal">30</span></label>
+      <input type="range" id="tLow" min="5" max="100" value="30">
+    </div>
+    <div class="control-group">
+      <label>High Threshold (높은 임계값) <span class="value-display" id="highVal">80</span></label>
+      <input type="range" id="tHigh" min="20" max="200" value="80">
+    </div>
+    <div class="control-group">
+      <label>선 두께 <span class="value-display" id="thickVal">1px</span></label>
+      <input type="range" id="thickness" min="1" max="4" value="1" step="1">
+    </div>
+    <div class="control-group">
+      <label>블러 강도 (노이즈 제거) <span class="value-display" id="blurVal">1.5</span></label>
+      <input type="range" id="blurRadius" min="0" max="5" value="1.5" step="0.5">
+    </div>
+    <div class="control-group full">
+      <label>출력 최대 너비 <span class="value-display" id="maxWVal">750px</span></label>
+      <input type="range" id="maxWidth" min="375" max="1500" value="750" step="75">
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="convertBtn" disabled>🔄 변환하기</button>
+    <button class="btn btn-download" id="downloadBtn" disabled>⬇️ PNG 다운로드</button>
+    <button class="btn btn-secondary" id="autoBtn" disabled>✨ 자동 최적화</button>
+  </div>
+
+  <div class="status" id="status">이미지를 업로드해주세요</div>
+
+  <div class="preview-grid">
+    <div class="preview-panel">
+      <h3>원본 이미지</h3>
+      <div class="canvas-wrapper">
+        <canvas id="originalCanvas"></canvas>
+      </div>
+    </div>
+    <div class="preview-panel">
+      <h3>변환 결과 (선화)</h3>
+      <div class="canvas-wrapper" style="background: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;">
+        <canvas id="outputCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="tips">
+    <strong>사용 팁:</strong><br>
+    • Low/High Threshold를 조절해 선의 섬세함을 제어하세요 (Low ↓ = 더 많은 선, High ↑ = 굵은 선만)<br>
+    • 선이 너무 끊기면 Low를 낮추고, 노이즈가 많으면 블러를 높이세요<br>
+    • 민화는 보통 Low:20~35, High:60~90 범위가 잘 맞습니다<br>
+    • 선 두께 2~3이 모바일 화면에서 색칠하기 편합니다<br>
+    • 출력 너비 750px = 2배 레티나 기준 375px 화면
+  </div>
+
+  <script>
+    let originalImage = null;
+    let outputDataUrl = null;
+    let convertDebounce = null;
+
+    // DOM refs
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    const originalCanvas = document.getElementById('originalCanvas');
+    const outputCanvas = document.getElementById('outputCanvas');
+    const convertBtn = document.getElementById('convertBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const autoBtn = document.getElementById('autoBtn');
+    const status = document.getElementById('status');
+
+    const tLow = document.getElementById('tLow');
+    const tHigh = document.getElementById('tHigh');
+    const thickness = document.getElementById('thickness');
+    const blurRadius = document.getElementById('blurRadius');
+    const maxWidthSlider = document.getElementById('maxWidth');
+
+    // Slider display updates
+    tLow.addEventListener('input', () => { document.getElementById('lowVal').textContent = tLow.value; debounceConvert(); });
+    tHigh.addEventListener('input', () => { document.getElementById('highVal').textContent = tHigh.value; debounceConvert(); });
+    thickness.addEventListener('input', () => { document.getElementById('thickVal').textContent = thickness.value + 'px'; debounceConvert(); });
+    blurRadius.addEventListener('input', () => { document.getElementById('blurVal').textContent = blurRadius.value; debounceConvert(); });
+    maxWidthSlider.addEventListener('input', () => { document.getElementById('maxWVal').textContent = maxWidthSlider.value + 'px'; debounceConvert(); });
+
+    // Upload handling
+    uploadArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { if (e.target.files[0]) loadImage(e.target.files[0]); });
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#E74C3C'; });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = '#C0392B'; });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '#C0392B';
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('image/')) loadImage(f);
+    });
+
+    convertBtn.addEventListener('click', runConvert);
+    autoBtn.addEventListener('click', runAutoOptimize);
+    downloadBtn.addEventListener('click', () => {
+      if (!outputDataUrl) return;
+      const a = document.createElement('a');
+      a.href = outputDataUrl;
+      a.download = 'lineart.png';
+      a.click();
+    });
+
+    function debounceConvert() {
+      if (!originalImage) return;
+      clearTimeout(convertDebounce);
+      convertDebounce = setTimeout(runConvert, 250);
+    }
+
+    function loadImage(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          originalImage = img;
+          drawOriginal(img);
+          convertBtn.disabled = false;
+          autoBtn.disabled = false;
+          setStatus('이미지 로드 완료. 변환하기를 눌러주세요.', '');
+          runConvert();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function drawOriginal(img) {
+      const maxW = parseInt(maxWidthSlider.value);
+      let w = img.width;
+      let h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+
+      originalCanvas.width = w;
+      originalCanvas.height = h;
+      const ctx = originalCanvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+    }
+
+    function setStatus(msg, type) {
+      status.textContent = msg;
+      status.className = 'status ' + (type || '');
+    }
+
+    function runConvert() {
+      if (!originalImage) return;
+      setStatus('변환 중...', 'processing');
+
+      // Use requestAnimationFrame to let UI update before heavy computation
+      requestAnimationFrame(() => {
+        try {
+          const low = parseInt(tLow.value);
+          const high = parseInt(tHigh.value);
+          const thick = parseInt(thickness.value);
+          const blur = parseFloat(blurRadius.value);
+          const maxW = parseInt(maxWidthSlider.value);
+
+          const result = convertToLineArt(originalImage, { low, high, thick, blur, maxW });
+          outputDataUrl = result;
+
+          const img = new Image();
+          img.onload = () => {
+            outputCanvas.width = img.width;
+            outputCanvas.height = img.height;
+            const ctx = outputCanvas.getContext('2d');
+            ctx.clearRect(0, 0, img.width, img.height);
+            ctx.drawImage(img, 0, 0);
+            downloadBtn.disabled = false;
+            setStatus(`변환 완료 — ${img.width}×${img.height}px`, 'done');
+          };
+          img.src = result;
+        } catch(e) {
+          setStatus('변환 오류: ' + e.message, '');
+          console.error(e);
+        }
+      });
+    }
+
+    function convertToLineArt(img, { low, high, thick, blur, maxW }) {
+      // 1. Setup canvas at target resolution
+      let w = img.width;
+      let h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const src = imageData.data;
+
+      // 2. Grayscale
+      const gray = new Float32Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        const r = src[i * 4];
+        const g = src[i * 4 + 1];
+        const b = src[i * 4 + 2];
+        gray[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+      }
+
+      // 3. Gaussian blur (separable 1D)
+      let blurred = gray;
+      if (blur > 0) {
+        blurred = gaussianBlur(gray, w, h, blur);
+      }
+
+      // 4. Sobel edge detection
+      const edges = sobelEdge(blurred, w, h);
+
+      // 5. Hysteresis thresholding
+      const edgeMap = hysteresis(edges, w, h, low, high);
+
+      // 6. Line dilation (thicken)
+      let thickMap = edgeMap;
+      for (let t = 1; t < thick; t++) {
+        thickMap = dilate(thickMap, w, h);
+      }
+
+      // 7. Build output: black lines on white background
+      const outData = new Uint8ClampedArray(w * h * 4);
+      for (let i = 0; i < w * h; i++) {
+        if (thickMap[i]) {
+          // Black line
+          outData[i * 4] = 0;
+          outData[i * 4 + 1] = 0;
+          outData[i * 4 + 2] = 0;
+          outData[i * 4 + 3] = 255;
+        } else {
+          // White background
+          outData[i * 4] = 255;
+          outData[i * 4 + 1] = 255;
+          outData[i * 4 + 2] = 255;
+          outData[i * 4 + 3] = 255;
+        }
+      }
+
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = w;
+      outCanvas.height = h;
+      const outCtx = outCanvas.getContext('2d');
+      outCtx.putImageData(new ImageData(outData, w, h), 0, 0);
+      return outCanvas.toDataURL('image/png');
+    }
+
+    // Separable Gaussian blur
+    function gaussianBlur(data, w, h, sigma) {
+      const radius = Math.ceil(sigma * 2);
+      const kernel = makeGaussianKernel(sigma, radius);
+      const temp = new Float32Array(w * h);
+      const out = new Float32Array(w * h);
+
+      // Horizontal pass
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          let sum = 0, wSum = 0;
+          for (let k = -radius; k <= radius; k++) {
+            const xi = Math.min(Math.max(x + k, 0), w - 1);
+            const kw = kernel[k + radius];
+            sum += data[y * w + xi] * kw;
+            wSum += kw;
+          }
+          temp[y * w + x] = sum / wSum;
+        }
+      }
+
+      // Vertical pass
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          let sum = 0, wSum = 0;
+          for (let k = -radius; k <= radius; k++) {
+            const yi = Math.min(Math.max(y + k, 0), h - 1);
+            const kw = kernel[k + radius];
+            sum += temp[yi * w + x] * kw;
+            wSum += kw;
+          }
+          out[y * w + x] = sum / wSum;
+        }
+      }
+      return out;
+    }
+
+    function makeGaussianKernel(sigma, radius) {
+      const k = [];
+      for (let i = -radius; i <= radius; i++) {
+        k.push(Math.exp(-(i * i) / (2 * sigma * sigma)));
+      }
+      return k;
+    }
+
+    // Sobel edge detection — returns magnitude array
+    function sobelEdge(gray, w, h) {
+      const out = new Float32Array(w * h);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const tl = gray[(y-1)*w+(x-1)], tc = gray[(y-1)*w+x], tr = gray[(y-1)*w+(x+1)];
+          const ml = gray[y*w+(x-1)],               mr = gray[y*w+(x+1)];
+          const bl = gray[(y+1)*w+(x-1)], bc = gray[(y+1)*w+x], br = gray[(y+1)*w+(x+1)];
+
+          const gx = -tl - 2*ml - bl + tr + 2*mr + br;
+          const gy = -tl - 2*tc - tr + bl + 2*bc + br;
+          out[y * w + x] = Math.sqrt(gx*gx + gy*gy);
+        }
+      }
+      return out;
+    }
+
+    // Hysteresis thresholding
+    function hysteresis(edges, w, h, low, high) {
+      const STRONG = 2, WEAK = 1, NONE = 0;
+      const map = new Uint8Array(w * h);
+
+      for (let i = 0; i < w * h; i++) {
+        if (edges[i] >= high) map[i] = STRONG;
+        else if (edges[i] >= low) map[i] = WEAK;
+      }
+
+      // BFS from strong pixels, activate connected weak pixels
+      const queue = [];
+      for (let i = 0; i < w * h; i++) {
+        if (map[i] === STRONG) queue.push(i);
+      }
+
+      const dirs = [-w-1,-w,-w+1,-1,1,w-1,w,w+1];
+      let qi = 0;
+      while (qi < queue.length) {
+        const idx = queue[qi++];
+        const x = idx % w;
+        const y = Math.floor(idx / w);
+        for (const d of dirs) {
+          const ni = idx + d;
+          const nx = ni % w;
+          const ny = Math.floor(ni / w);
+          if (ni < 0 || ni >= w*h) continue;
+          if (Math.abs(nx - x) > 1 || Math.abs(ny - y) > 1) continue;
+          if (map[ni] === WEAK) {
+            map[ni] = STRONG;
+            queue.push(ni);
+          }
+        }
+      }
+
+      const result = new Uint8Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        result[i] = map[i] === STRONG ? 1 : 0;
+      }
+      return result;
+    }
+
+    // Morphological dilation (1px expand)
+    function dilate(map, w, h) {
+      const out = new Uint8Array(map);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          if (map[y*w+x]) {
+            out[(y-1)*w+(x-1)] = out[(y-1)*w+x] = out[(y-1)*w+(x+1)] = 1;
+            out[y*w+(x-1)] =                        out[y*w+(x+1)] = 1;
+            out[(y+1)*w+(x-1)] = out[(y+1)*w+x] = out[(y+1)*w+(x+1)] = 1;
+          }
+        }
+      }
+      return out;
+    }
+
+    // Auto-optimize: tries a range of thresholds and picks the one with best coverage
+    function runAutoOptimize() {
+      if (!originalImage) return;
+      setStatus('자동 최적화 중... (잠시 기다려주세요)', 'processing');
+
+      setTimeout(() => {
+        const maxW = parseInt(maxWidthSlider.value);
+        const blur = parseFloat(blurRadius.value);
+        const thick = parseInt(thickness.value);
+
+        // Sample multiple threshold combinations, pick one with ~5-15% edge coverage
+        const candidates = [
+          { low: 20, high: 60 }, { low: 25, high: 70 }, { low: 30, high: 80 },
+          { low: 35, high: 90 }, { low: 40, high: 100 }, { low: 20, high: 80 },
+          { low: 25, high: 90 }, { low: 30, high: 100 },
+        ];
+
+        let best = null;
+        let bestScore = Infinity;
+
+        // Quick analysis on smaller canvas
+        const analyzeW = Math.min(375, maxW);
+        let analyzeH = Math.round(originalImage.height * analyzeW / originalImage.width);
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = analyzeW; tempCanvas.height = analyzeH;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(originalImage, 0, 0, analyzeW, analyzeH);
+        const imgData = tempCtx.getImageData(0, 0, analyzeW, analyzeH);
+        const src = imgData.data;
+
+        const grayArr = new Float32Array(analyzeW * analyzeH);
+        for (let i = 0; i < analyzeW * analyzeH; i++) {
+          grayArr[i] = 0.299*src[i*4] + 0.587*src[i*4+1] + 0.114*src[i*4+2];
+        }
+        const blurred = blur > 0 ? gaussianBlur(grayArr, analyzeW, analyzeH, blur) : grayArr;
+        const edges = sobelEdge(blurred, analyzeW, analyzeH);
+        const total = analyzeW * analyzeH;
+
+        for (const c of candidates) {
+          const edgeMap = hysteresis(edges, analyzeW, analyzeH, c.low, c.high);
+          const count = edgeMap.reduce((s, v) => s + v, 0);
+          const coverage = count / total;
+          // Target: 5-12% edge coverage for민화
+          const score = Math.abs(coverage - 0.08);
+          if (score < bestScore) { bestScore = score; best = c; }
+        }
+
+        if (best) {
+          tLow.value = best.low;
+          tHigh.value = best.high;
+          document.getElementById('lowVal').textContent = best.low;
+          document.getElementById('highVal').textContent = best.high;
+          runConvert();
+        }
+      }, 50);
+    }
+  </script>
+</body>
+</html>
