@@ -1,5 +1,4 @@
 import './globals.css'
-import TDSWrapper from './TDSWrapper'
 
 export const metadata = {
   title: '민화 색칠하기',
@@ -25,9 +24,7 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#FDF8F3" />
       </head>
       <body className="bg-bg-main min-h-screen">
-        <TDSWrapper>
-          {children}
-        </TDSWrapper>
+        {children}
       </body>
     </html>
   )
